@@ -8,20 +8,16 @@ public class TextureCreator : Image
     [SerializeField] private float speed;
     [SerializeField] private bool canSpin;
     [SerializeField] private float offset;
-
-    //private Image image;
-    private Texture2D fillingTexture;
-    private Material slotMaterial;
-
-    // private void Awake()
-    // {
-    //     image = GetComponent<Image>();
-    // }
-        
+    
+    private Texture2D m_fillingTexture;
+    private Material m_slotMaterial;
+    
     public override Material GetModifiedMaterial(Material baseMaterial)
     {
         Material cModifiedMat = base.GetModifiedMaterial(baseMaterial);
 
+        if (!Application.isPlaying) return cModifiedMat;
+        
         if (!canSpin)
         {
             offset %= 1;
@@ -31,11 +27,9 @@ public class TextureCreator : Image
             offset += speed / 100;
             offset %= 1;
         }
-            
-        // offset += speed / 100;
-        // offset %= 1;
-        slotMaterial.SetFloat("_Offset", offset);
-            
+        
+        m_slotMaterial.SetFloat("_Offset", offset);
+
         return cModifiedMat;
     }
 
@@ -46,13 +40,11 @@ public class TextureCreator : Image
         Sprite newSprite = Sprite.Create(slotTex, new Rect(0, 0, slotTex.width, slotTex.height), Vector2.zero);
         sprite = newSprite;
         offset = Random.Range(0, 1f);
-        slotMaterial = new Material(material);
-        slotMaterial.SetTexture("_MainTex", slotTex);
-        slotMaterial.SetFloat("_Offset", offset);
-        material = slotMaterial;
+        m_slotMaterial = new Material(material);
+        m_slotMaterial.SetTexture("_MainTex", slotTex);
+        m_slotMaterial.SetFloat("_Offset", offset);
+        material = m_slotMaterial;
         SetNativeSize();
-        // material.SetTexture("_MainTex", slotTex);
-        // material.SetFloat("_Offset", 0);
     }
 
     private Texture2D CreateFillingTexture()
@@ -66,35 +58,25 @@ public class TextureCreator : Image
             height += t.height;
         }
             
-        fillingTexture = new Texture2D(width, height);
+        m_fillingTexture = new Texture2D(width, height);
 
-        for (int i = 0; i < fillingTexture.width; i++)
+        for (int i = 0; i < m_fillingTexture.width; i++)
         {
-            for (int j = 0; j < fillingTexture.height; j++)
+            for (int j = 0; j < m_fillingTexture.height; j++)
             {
                 Color color = textures[j / modHeight].GetPixel(i, j % modHeight);
-                fillingTexture.SetPixel(i, j, color);
+                m_fillingTexture.SetPixel(i, j, color);
             }
         }
             
-        fillingTexture.Apply();
+        m_fillingTexture.Apply();
 
-        return fillingTexture;
+        return m_fillingTexture;
     }
         
 
     private void FixedUpdate()
     {
-        material = GetModifiedMaterial(slotMaterial);
+        material = GetModifiedMaterial(m_slotMaterial);
     }
-    //
-    // private void SpinSlot()
-    // {
-    //     Debug.Log("TEST");
-    //     if (!canSpin) return;
-    //     offset += speed / 100;
-    //     offset %= 1;
-    //     material.SetFloat("_Offset", offset);
-    //     
-    // }
 }
