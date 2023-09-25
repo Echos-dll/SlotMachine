@@ -1,16 +1,15 @@
 ﻿using UnityEditor;
-using UnityEngine;
 
-namespace DefaultNamespace.Editor
+namespace Editor
 {
-    [CustomEditor(typeof(TextureCreator))]
+    [CustomEditor(typeof(SpinningSlot))]
     public class UIButtonEditor : UnityEditor.Editor
     {
         public override void OnInspectorGUI()
         {
             base.OnInspectorGUI();
 
-            TextureCreator t = (TextureCreator)target;
+            SpinningSlot t = (SpinningSlot)target;
         }
     }
 }

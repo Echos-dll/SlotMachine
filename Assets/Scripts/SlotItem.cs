@@ -3,16 +3,16 @@
 [CreateAssetMenu(fileName = "New Slot Item", menuName = "Create Slot Item", order = 0)]
 public class SlotItem : ScriptableObject
 {
-    public Sprite _sprite;
-    public Sprite _spriteBlur;
-    private int m_value;
+    public Texture2D _texture;
+    public Texture2D _textureBlur;
+    private float m_value;
 
-    public void SetValue(int val)
+    public void SetValue(float val)
     {
         m_value = val;
     }
 
-    public int GetValue()
+    public float GetValue()
     {
         return m_value;
     }

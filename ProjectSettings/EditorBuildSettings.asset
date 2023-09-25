@@ -4,5 +4,8 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/Slot.unity
+    guid: 6775cbcad0cc07345857f81aefaec6eb
   m_configObjects: {}
