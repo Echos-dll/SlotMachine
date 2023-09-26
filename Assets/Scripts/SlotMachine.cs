@@ -12,6 +12,7 @@ public class SlotMachine : MonoBehaviour
     [SerializeField] private int _amountToPick;
     [SerializeField] private float _spinSpeed;
     [SerializeField] private bool _slowStop;
+    [SerializeField] private ParticleSystem _coinParticleSystem;
     
     [Header("Events")]
     [SerializeField] private ScriptableEvent _spinEvent;
@@ -24,7 +25,9 @@ public class SlotMachine : MonoBehaviour
     private float m_leastChance;
     private float m_totalWeight;
     private int[] m_pickedAmounts;
+    private int m_stopCount;
     private int m_pickedCount;
+    private int m_currentResult;
 
     private void Awake()
     {
@@ -138,43 +141,61 @@ public class SlotMachine : MonoBehaviour
             totalDelay += Random.value;
         }
     }
-
-    private void StopSpinning()
-    {
-        int result = PickRandomResult();
-        
-        for (int i = 0; i < _slots.Count; i++)
-        {
-            SpinningSlot slot = _slots[i];
-            
-            if (i == _slots.Count - 1 && SlowMoCheck(result))
-            {
-                slot.StopAtInTime(_results[result]._combination[i].GetValue(), _slowStop ? 2.5f : 1f,
-                    _resultEvent.Invoke);
-            }
-            else
-            {
-                slot.StopAtInTime(_results[result]._combination[i].GetValue(),  (i + 1) * .04f, _resultEvent.Invoke);
-
-            }
-        }
-    }
-
+    
     private bool SlowMoCheck(int result)
     {
         return _results[result]._combination[0] == _results[result]._combination[1];
     }
 
+    private void OnSpinStop()
+    {
+        m_stopCount++;
+
+        if (m_stopCount != _slots.Count) return;
+        
+        _resultEvent.Invoke();
+        m_stopCount = 0;
+    }
+
+    private void StopSpinning()
+    {
+        m_currentResult = PickRandomResult();
+
+        for (int i = 0; i < _slots.Count; i++)
+        {
+            SpinningSlot slot = _slots[i];
+
+            if (i == _slots.Count - 1 && SlowMoCheck(m_currentResult))
+            {
+                slot.StopAtInTime(_results[m_currentResult]._combination[i].GetValue(), _slowStop ? 2.5f : 1f,
+                    OnSpinStop);
+            }
+            else
+            {
+                slot.StopAtInTime(_results[m_currentResult]._combination[i].GetValue(), (i + 1) * .04f,
+                    OnSpinStop);
+
+            }
+        }
+    }
+
     private void SkipSpinning()
     {
-        int result = PickRandomResult();
+        m_currentResult = PickRandomResult();
         
         for (int i = 0; i < _slots.Count; i++)
         {
             SpinningSlot slot = _slots[i];
             slot.CancelCoroutine();
-            slot.StopAtInTime(_results[result]._combination[i].GetValue(), 0, _resultEvent.Invoke);
+            slot.StopAtInTime(_results[m_currentResult]._combination[i].GetValue(), 0, OnSpinStop);
         }
+    }
+    
+    private void PlayParticle()
+    {
+        ParticleSystem.EmissionModule emissionModule = _coinParticleSystem.emission;
+        emissionModule.rateOverTime = _results[m_currentResult]._particleCount;
+        _coinParticleSystem.Play();
     }
 
     private void InfoLogger()
@@ -199,13 +220,17 @@ public class SlotMachine : MonoBehaviour
         _spinEvent.AddListener(StartSpinning);
         _stopEvent.AddListener(StopSpinning);
         _skipEvent.AddListener(SkipSpinning);
+        _resultEvent.AddListener(PlayParticle);
     }
+
+    
 
     private void OnDisable()
     {
         _spinEvent.RemoveListener(StartSpinning);
         _stopEvent.RemoveListener(StopSpinning);
         _skipEvent.RemoveListener(SkipSpinning);
+        _resultEvent.RemoveListener(PlayParticle);
     }
 }
 
@@ -215,4 +240,5 @@ public struct Result
     public SlotItem[] _combination;
     public float _chance;
     public int _reward;
+    public int _particleCount;
 }

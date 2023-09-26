@@ -82,7 +82,7 @@ public class SpinningSlot : Image
         return m_fillingTexture;
     }
     
-    public void StopAtInTime(float offset, float duration, Action resultAction)
+    public void StopAtInTime(float offset, float duration, Action callbackAction)
     {
         if (m_stopTween != null && m_stopTween.IsPlaying())
         {
@@ -109,7 +109,7 @@ public class SpinningSlot : Image
             m_stopping = false;
             m_speed = 0;
             m_offset = offset;
-            resultAction?.Invoke();
+            callbackAction?.Invoke();
         });
     }
 
