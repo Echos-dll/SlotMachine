@@ -8,16 +8,16 @@ public class SpinningSlot : Image
 {
     private Texture2D[] m_slotTextures;
     private Texture2D[] m_blurTextures;
-    private Texture2D m_fillingTexture;
     private Material m_slotMaterial;
     private Coroutine m_startRoutine;
+    private Tween m_startTween;
     private Tween m_stopTween;
     
     private float m_maxSpeed;
     private float m_currentSpeed;        
-    private bool m_canSpin;       
     private float m_offset;
     private float m_transition;
+    private bool m_canSpin;       
     private bool m_stopping;
     
     protected override void Start()
@@ -25,8 +25,8 @@ public class SpinningSlot : Image
         base.Start();
         if (!Application.isPlaying) return;
 
-        Texture2D slotTex = CreateSlotTexture();
-        Texture2D blurTex = CreateBlurTexture();
+        Texture2D slotTex = CreateTexture(m_slotTextures);
+        Texture2D blurTex = CreateTexture(m_blurTextures);
         Sprite newSprite = Sprite.Create(slotTex, new Rect(0, 0, slotTex.width, slotTex.height), Vector2.zero);
         sprite = newSprite;
         m_offset = 0;
@@ -63,58 +63,31 @@ public class SpinningSlot : Image
         return cModifiedMat;
     }
 
-    private Texture2D CreateSlotTexture()
+    private Texture2D CreateTexture(Texture2D[] textures)
     {
-        int width = m_slotTextures[0].width;
+        int width = textures[0].width;
         int height = 0;
-        int modHeight = m_slotTextures[0].height;
+        int modHeight = textures[0].height;
             
-        foreach (Texture2D t in m_slotTextures)
+        foreach (Texture2D t in textures)
         {
             height += t.height;
         }
             
-        m_fillingTexture = new Texture2D(width, height);
+        Texture2D fillingTexture = new Texture2D(width, height);
 
-        for (int i = 0; i < m_fillingTexture.width; i++)
+        for (int i = 0; i < fillingTexture.width; i++)
         {
-            for (int j = 0; j < m_fillingTexture.height; j++)
+            for (int j = 0; j < fillingTexture.height; j++)
             {
-                Color pixel = m_slotTextures[j / modHeight].GetPixel(i, j % modHeight);
-                m_fillingTexture.SetPixel(i, j, pixel);
+                Color pixel = textures[j / modHeight].GetPixel(i, j % modHeight);
+                fillingTexture.SetPixel(i, j, pixel);
             }
         }
             
-        m_fillingTexture.Apply();
+        fillingTexture.Apply();
 
-        return m_fillingTexture;
-    }
-    
-    private Texture2D CreateBlurTexture()
-    {
-        int width = m_blurTextures[0].width;
-        int height = 0;
-        int modHeight = m_blurTextures[0].height;
-            
-        foreach (Texture2D t in m_blurTextures)
-        {
-            height += t.height;
-        }
-            
-        m_fillingTexture = new Texture2D(width, height);
-
-        for (int i = 0; i < m_fillingTexture.width; i++)
-        {
-            for (int j = 0; j < m_fillingTexture.height; j++)
-            {
-                Color pixel = m_blurTextures[j / modHeight].GetPixel(i, j % modHeight);
-                m_fillingTexture.SetPixel(i, j, pixel);
-            }
-        }
-            
-        m_fillingTexture.Apply();
-
-        return m_fillingTexture;
+        return fillingTexture;
     }
     
     public void StopAtInTime(float offset, float duration, Action callbackAction)
@@ -124,6 +97,8 @@ public class SpinningSlot : Image
             m_stopTween.Kill(true);
             return;
         }
+        
+        CancelStartCoroutine();
         
         m_stopping = true;
         
@@ -150,23 +125,26 @@ public class SpinningSlot : Image
         });
     }
 
-    public void StartWithDelay(float delay, float spinSpeed)
+    public void StartWithDelay(float delay, float spinSpeed, Action callback)
     {
-        m_startRoutine = StartCoroutine(StartSpin(delay, spinSpeed));
+        m_startRoutine = StartCoroutine(StartSpin(delay, spinSpeed, callback));
     }
     
-    public void CancelCoroutine()
+    public void CancelStartCoroutine()
     {
-        if (m_startRoutine != null)
-            StopCoroutine(m_startRoutine);
+        if (m_startRoutine == null) return;
+        
+        StopCoroutine(m_startRoutine);
+        m_startTween.Kill(true);
     }
 
-    private IEnumerator StartSpin(float delay, float spinSpeed)
+    private IEnumerator StartSpin(float delay, float spinSpeed, Action callback)
     {
         yield return new WaitForSeconds(delay);
         m_canSpin = true;
         m_maxSpeed = spinSpeed;
-        DOVirtual.Float(m_currentSpeed, m_maxSpeed, 1f, (x) =>
+        callback?.Invoke();
+        m_startTween = DOVirtual.Float(m_currentSpeed, m_maxSpeed, 1f, (x) =>
         {
             m_currentSpeed = x;
             m_transition = 1 - Mathf.Lerp(0, 1, Mathf.InverseLerp(0, m_maxSpeed, m_currentSpeed));

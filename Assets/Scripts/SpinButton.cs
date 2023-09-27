@@ -1,14 +1,12 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class SpinButton : MonoBehaviour
 {
-    [SerializeField] private ScriptableEvent _spinEvent;
-    [SerializeField] private ScriptableEvent _stopEvent;
-    [SerializeField] private ScriptableEvent _resultEvent;
-    [SerializeField] private ScriptableEvent _skipEvent;
     [SerializeField] private TextMeshProUGUI _buttonText;
+    [SerializeField] private ScriptableStateEvent _stateEvent;
 
     private Button m_button;
     private bool m_canSpin;
@@ -17,6 +15,29 @@ public class SpinButton : MonoBehaviour
     private void Awake()
     {
         m_button = GetComponent<Button>();
+    }
+
+    private void StateHandler(State state)
+    {
+        switch (state)
+        {
+            case State.Spin:
+                ToggleButton(false);
+                break;
+            case State.Spinning:
+                ToggleButton(true);
+                break;
+            case State.Stop:
+                break;
+            case State.Result:
+                OnResult();
+                break;
+            case State.Skip:
+                OnSkip();
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(state), state, null);
+        }
     }
 
     private void ToggleSpin()
@@ -33,7 +54,7 @@ public class SpinButton : MonoBehaviour
 
     private void Stop()
     {
-        _stopEvent.Invoke();
+        _stateEvent.Invoke(State.Stop);
         m_isSpinning = false;
         ToggleButton(false);
         _buttonText.text = "SPIN";
@@ -41,7 +62,7 @@ public class SpinButton : MonoBehaviour
 
     private void Spin()
     {
-        _spinEvent.Invoke();
+        _stateEvent.Invoke(State.Spin);
         m_isSpinning = true;
         _buttonText.text = "STOP";
     }
@@ -67,14 +88,12 @@ public class SpinButton : MonoBehaviour
     private void OnEnable()
     {
         m_button.onClick.AddListener(ToggleSpin);
-        _skipEvent.AddListener(OnSkip);
-        _resultEvent.AddListener(OnResult);
+        _stateEvent.AddListener(StateHandler);
     }
 
     private void OnDisable()
     {
         m_button.onClick.RemoveListener(ToggleSpin);
-        _skipEvent.RemoveListener(OnSkip);
-        _resultEvent.RemoveListener(OnResult);
+        _stateEvent.RemoveListener(StateHandler);
     }
 }

@@ -1,10 +1,9 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 public class SkipButton : MonoBehaviour
 {
-    [SerializeField] private ScriptableEvent _skipEvent;
+    [SerializeField] private ScriptableStateEvent _stateEvent;
 
     private Button m_button;
 
@@ -15,7 +14,7 @@ public class SkipButton : MonoBehaviour
 
     private void Skip()
     {
-        _skipEvent.Invoke();
+        _stateEvent.Invoke(State.Skip);
     }
         
     private void OnEnable()

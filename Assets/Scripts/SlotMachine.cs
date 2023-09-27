@@ -10,16 +10,16 @@ public class SlotMachine : MonoBehaviour
     [SerializeField] private List<SpinningSlot> _slots;
     [SerializeField] private List<SlotItem> _slotItems;
     [SerializeField] private List<Result> _results;
-    [SerializeField] private int _amountToPick;
     [SerializeField] private float _spinSpeed;
     [SerializeField] private bool _slowStop;
     [SerializeField] private ParticleSystem _coinParticleSystem;
     
     [Header("Events")]
-    [SerializeField] private ScriptableEvent _spinEvent;
-    [SerializeField] private ScriptableEvent _stopEvent;
-    [SerializeField] private ScriptableEvent _resultEvent;
-    [SerializeField] private ScriptableEvent _skipEvent;
+    [SerializeField] private ScriptableStateEvent _stateEvent;
+    
+    [Header("DEBUG MODE")]
+    [SerializeField] private bool _debugMode;
+    [SerializeField] private int _amountToPick;
     
     private float[] m_pocket;
     private float[] m_remaining;
@@ -27,6 +27,7 @@ public class SlotMachine : MonoBehaviour
     private float m_totalWeight;
     private int[] m_pickedAmounts;
     private int m_stopCount;
+    private int m_spinCount;
     private int m_pickedCount;
     private int m_currentResult;
     private bool m_loaded;
@@ -34,7 +35,7 @@ public class SlotMachine : MonoBehaviour
     private void Awake()
     {
         Load();
-
+        
         Texture2D[] slotTextures = new Texture2D[_slotItems.Count];
         Texture2D[] blurTextures = new Texture2D[_slotItems.Count];
 
@@ -53,21 +54,26 @@ public class SlotMachine : MonoBehaviour
         SetSlotItemValues();
         FindLeastChance();
         if (!m_loaded) FillPocket();
-        
-        // for (int i = 0; i < _amountToPick; i++)
-        // {
-        //     PickRandomResult();
-        //     m_pickedCount++;
-        //     if (m_pickedCount % (100 / m_leastChance) == 0)
-        //     {
-        //         FillPocket();
-        //     }
-        // }
 
-        // for (int i = 0; i < m_pickedAmounts.Length; i++)
-        // {
-        //     Debug.Log($"Index: {i} Picked " + m_pickedAmounts[i] + " times");
-        // }
+        if (_debugMode)
+        {
+            m_pocket = new float[_results.Count];
+            m_pickedAmounts = new int[_results.Count];
+            
+            m_pickedCount = 0;
+
+            FillPocket();
+            
+            for (int i = 0; i < _amountToPick; i++)
+            {
+                PickRandomResult();
+            }
+
+            for (int i = 0; i < m_pickedAmounts.Length; i++)
+            {
+                Debug.Log($"Index: {i} Picked " + m_pickedAmounts[i] + " times");
+            }
+        }
     }
 
     private void SetSlotItemValues()
@@ -138,12 +144,20 @@ public class SlotMachine : MonoBehaviour
     private void StartSpinning()
     {
         float totalDelay = 0;
-        for (int i = 0; i < _slots.Count; i++)
+        foreach (SpinningSlot slot in _slots)
         {
-            SpinningSlot slot = _slots[i];
-            slot.StartWithDelay(totalDelay, _spinSpeed);
+            slot.StartWithDelay(totalDelay, _spinSpeed, OnSpinStarted);
             totalDelay += Random.value;
         }
+    }
+
+    private void OnSpinStarted()
+    {
+        m_spinCount++;
+        if (m_spinCount != _slots.Count) return;
+        
+        _stateEvent.Invoke(State.Spinning);
+        m_spinCount = 0;
     }
     
     private bool SlowMoCheck(int result)
@@ -151,20 +165,10 @@ public class SlotMachine : MonoBehaviour
         return _results[result]._combination[0] == _results[result]._combination[1];
     }
 
-    private void OnSpinStop()
-    {
-        m_stopCount++;
-
-        if (m_stopCount != _slots.Count) return;
-        
-        _resultEvent.Invoke();
-        m_stopCount = 0;
-    }
-
     private void StopSpinning()
     {
         m_currentResult = PickRandomResult();
-
+        
         for (int i = 0; i < _slots.Count; i++)
         {
             SpinningSlot slot = _slots[i];
@@ -182,6 +186,17 @@ public class SlotMachine : MonoBehaviour
             }
         }
     }
+    
+    private void OnSpinStop()
+    {
+        m_stopCount++;
+
+        if (m_stopCount != _slots.Count) return;
+        
+        //_resultEvent.Invoke();
+        _stateEvent.Invoke(State.Result);
+        m_stopCount = 0;
+    }
 
     private void SkipSpinning()
     {
@@ -190,7 +205,7 @@ public class SlotMachine : MonoBehaviour
         for (int i = 0; i < _slots.Count; i++)
         {
             SpinningSlot slot = _slots[i];
-            slot.CancelCoroutine();
+            slot.CancelStartCoroutine();
             slot.StopAtInTime(_results[m_currentResult]._combination[i].GetValue(), 0, OnSpinStop);
         }
     }
@@ -202,20 +217,26 @@ public class SlotMachine : MonoBehaviour
         _coinParticleSystem.Play();
     }
 
-    private void InfoLogger()
+    private void StateHandler(State state)
     {
-        foreach (Result result in _results)
+        switch (state)
         {
-            StringBuilder strBuilder = new StringBuilder();
-
-            foreach (SlotItem item in result._combination)
-            {
-                strBuilder.Append($"{item.name} ");
-            }
-
-            strBuilder.Append($" Chance: {result._chance} Reward: {result._reward}");
-
-            Debug.Log(strBuilder.ToString());
+            case State.Spin:
+                StartSpinning();
+                break;
+            case State.Spinning:
+                break;
+            case State.Stop:
+                StopSpinning();
+                break;
+            case State.Result:
+                PlayParticle();
+                break;
+            case State.Skip:
+                SkipSpinning();
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(state), state, null);
         }
     }
 
@@ -244,28 +265,16 @@ public class SlotMachine : MonoBehaviour
         m_pickedCount = load._pickedCountData;
         m_pickedAmounts = load._pickedAmountsData;
         m_loaded = true;
-
-        // Debug.Log("Total picked count: " + m_pickedCount);
-        // for (int i = 0; i < m_pickedAmounts.Length; i++)
-        // {
-        //     Debug.Log("Index: " + i + " Picked " + m_pickedAmounts[i] + " times");
-        // }
     }
 
     private void OnEnable()
     {
-        _spinEvent.AddListener(StartSpinning);
-        _stopEvent.AddListener(StopSpinning);
-        _skipEvent.AddListener(SkipSpinning);
-        _resultEvent.AddListener(PlayParticle);
+        _stateEvent.AddListener(StateHandler);
     }
 
     private void OnDisable()
     {
-        _spinEvent.RemoveListener(StartSpinning);
-        _stopEvent.RemoveListener(StopSpinning);
-        _skipEvent.RemoveListener(SkipSpinning);
-        _resultEvent.RemoveListener(PlayParticle);
+        _stateEvent.RemoveListener(StateHandler);
     }
 
     private void OnDestroy()
