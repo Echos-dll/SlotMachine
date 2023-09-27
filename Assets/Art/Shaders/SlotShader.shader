@@ -1,16 +1,17 @@
-Shader "Slider"
+Shader "Slot Shader"
 {
     Properties
     {
         [NoScaleOffset]_MainTex("_MainTex", 2D) = "white" {}
-        _Color ("Tint", Color) = (1,1,1,1)
+        [NoScaleOffset]_BlurTex("_BlurTex", 2D) = "white" {}
         _Offset("_Offset", Float) = 0
-        [HideInInspector]_BUILTIN_Surface("Float", Float) = 0
+        _Transition("_Transition", Float) = 1
+        [HideInInspector]_BUILTIN_Surface("Float", Float) = 1
         [HideInInspector]_BUILTIN_Blend("Float", Float) = 0
         [HideInInspector]_BUILTIN_AlphaClip("Float", Float) = 1
         [HideInInspector]_BUILTIN_SrcBlend("Float", Float) = 1
         [HideInInspector]_BUILTIN_DstBlend("Float", Float) = 0
-        [HideInInspector]_BUILTIN_ZWrite("Float", Float) = 1
+        [HideInInspector]_BUILTIN_ZWrite("Float", Float) = 0
         [HideInInspector]_BUILTIN_ZWriteControl("Float", Float) = 0
         [HideInInspector]_BUILTIN_ZTest("Float", Float) = 4
         [HideInInspector]_BUILTIN_CullMode("Float", Float) = 2
@@ -28,9 +29,9 @@ Shader "Slider"
         Tags
         {
             // RenderPipeline: <None>
-            "RenderType"="Opaque"
+            "RenderType"="Transparent"
             "BuiltInMaterialType" = "Unlit"
-            "Queue"="AlphaTest"
+            "Queue"="Transparent"
             "ShaderGraphShader"="true"
             "ShaderGraphTargetId"="BuiltInUnlitSubTarget"
         }
@@ -229,12 +230,16 @@ Shader "Slider"
         CBUFFER_START(UnityPerMaterial)
         float4 _MainTex_TexelSize;
         float _Offset;
+        float _Transition;
+        float4 _BlurTex_TexelSize;
         CBUFFER_END
         
         // Object and Global properties
         SAMPLER(SamplerState_Linear_Repeat);
         TEXTURE2D(_MainTex);
         SAMPLER(sampler_MainTex);
+        TEXTURE2D(_BlurTex);
+        SAMPLER(sampler_BlurTex);
         
         // -- Property used by ScenePickingPass
         #ifdef SCENEPICKINGPASS
@@ -255,6 +260,11 @@ Shader "Slider"
         void Unity_Add_float4(float4 A, float4 B, out float4 Out)
         {
             Out = A + B;
+        }
+        
+        void Unity_Lerp_float4(float4 A, float4 B, float4 T, out float4 Out)
+        {
+            Out = lerp(A, B, T);
         }
         
         // Custom interpolators pre vertex
@@ -297,6 +307,17 @@ Shader "Slider"
         SurfaceDescription SurfaceDescriptionFunction(SurfaceDescriptionInputs IN)
         {
             SurfaceDescription surface = (SurfaceDescription)0;
+            UnityTexture2D _Property_2ebad2947b264929b09ab2159cb1cf6d_Out_0 = UnityBuildTexture2DStructNoScale(_BlurTex);
+            float4 _UV_4a598626f1994c958ac85cfb315bcffb_Out_0 = IN.uv0;
+            float _Property_28ed0244ecd349e8b0168b748f8b7910_Out_0 = _Offset;
+            float4 _Vector4_c1550959f7c74f1dab1a04a584d8cbe5_Out_0 = float4(0, _Property_28ed0244ecd349e8b0168b748f8b7910_Out_0, 0, 0);
+            float4 _Add_31d28d5d6d1347f18f43ca87fafcf3ea_Out_2;
+            Unity_Add_float4(_UV_4a598626f1994c958ac85cfb315bcffb_Out_0, _Vector4_c1550959f7c74f1dab1a04a584d8cbe5_Out_0, _Add_31d28d5d6d1347f18f43ca87fafcf3ea_Out_2);
+            float4 _SampleTexture2D_9c9ccf15786c473a829618bb4121e0ec_RGBA_0 = SAMPLE_TEXTURE2D(_Property_2ebad2947b264929b09ab2159cb1cf6d_Out_0.tex, _Property_2ebad2947b264929b09ab2159cb1cf6d_Out_0.samplerstate, _Property_2ebad2947b264929b09ab2159cb1cf6d_Out_0.GetTransformedUV((_Add_31d28d5d6d1347f18f43ca87fafcf3ea_Out_2.xy)));
+            float _SampleTexture2D_9c9ccf15786c473a829618bb4121e0ec_R_4 = _SampleTexture2D_9c9ccf15786c473a829618bb4121e0ec_RGBA_0.r;
+            float _SampleTexture2D_9c9ccf15786c473a829618bb4121e0ec_G_5 = _SampleTexture2D_9c9ccf15786c473a829618bb4121e0ec_RGBA_0.g;
+            float _SampleTexture2D_9c9ccf15786c473a829618bb4121e0ec_B_6 = _SampleTexture2D_9c9ccf15786c473a829618bb4121e0ec_RGBA_0.b;
+            float _SampleTexture2D_9c9ccf15786c473a829618bb4121e0ec_A_7 = _SampleTexture2D_9c9ccf15786c473a829618bb4121e0ec_RGBA_0.a;
             UnityTexture2D _Property_e51ad09eb41c4ab18480599d20b574f3_Out_0 = UnityBuildTexture2DStructNoScale(_MainTex);
             float4 _UV_99d300643fdf4c6d917bde6f587d559d_Out_0 = IN.uv0;
             float _Property_5c9429f4a0f8474c897d95e82a330cc2_Out_0 = _Offset;
@@ -308,7 +329,10 @@ Shader "Slider"
             float _SampleTexture2D_2ab187f327f74207b9f43b82e57f5843_G_5 = _SampleTexture2D_2ab187f327f74207b9f43b82e57f5843_RGBA_0.g;
             float _SampleTexture2D_2ab187f327f74207b9f43b82e57f5843_B_6 = _SampleTexture2D_2ab187f327f74207b9f43b82e57f5843_RGBA_0.b;
             float _SampleTexture2D_2ab187f327f74207b9f43b82e57f5843_A_7 = _SampleTexture2D_2ab187f327f74207b9f43b82e57f5843_RGBA_0.a;
-            surface.BaseColor = (_SampleTexture2D_2ab187f327f74207b9f43b82e57f5843_RGBA_0.xyz);
+            float _Property_36badb39f5bc49a1820288150874e02f_Out_0 = _Transition;
+            float4 _Lerp_25abaecf2421423ebbcde22c0af9664a_Out_3;
+            Unity_Lerp_float4(_SampleTexture2D_9c9ccf15786c473a829618bb4121e0ec_RGBA_0, _SampleTexture2D_2ab187f327f74207b9f43b82e57f5843_RGBA_0, (_Property_36badb39f5bc49a1820288150874e02f_Out_0.xxxx), _Lerp_25abaecf2421423ebbcde22c0af9664a_Out_3);
+            surface.BaseColor = (_Lerp_25abaecf2421423ebbcde22c0af9664a_Out_3.xyz);
             surface.Alpha = _SampleTexture2D_2ab187f327f74207b9f43b82e57f5843_A_7;
             surface.AlphaClipThreshold = 0.5;
             return surface;
@@ -599,12 +623,16 @@ Shader "Slider"
         CBUFFER_START(UnityPerMaterial)
         float4 _MainTex_TexelSize;
         float _Offset;
+        float _Transition;
+        float4 _BlurTex_TexelSize;
         CBUFFER_END
         
         // Object and Global properties
         SAMPLER(SamplerState_Linear_Repeat);
         TEXTURE2D(_MainTex);
         SAMPLER(sampler_MainTex);
+        TEXTURE2D(_BlurTex);
+        SAMPLER(sampler_BlurTex);
         
         // -- Property used by ScenePickingPass
         #ifdef SCENEPICKINGPASS
@@ -969,12 +997,16 @@ Shader "Slider"
         CBUFFER_START(UnityPerMaterial)
         float4 _MainTex_TexelSize;
         float _Offset;
+        float _Transition;
+        float4 _BlurTex_TexelSize;
         CBUFFER_END
         
         // Object and Global properties
         SAMPLER(SamplerState_Linear_Repeat);
         TEXTURE2D(_MainTex);
         SAMPLER(sampler_MainTex);
+        TEXTURE2D(_BlurTex);
+        SAMPLER(sampler_BlurTex);
         
         // -- Property used by ScenePickingPass
         #ifdef SCENEPICKINGPASS
@@ -1335,12 +1367,16 @@ Shader "Slider"
         CBUFFER_START(UnityPerMaterial)
         float4 _MainTex_TexelSize;
         float _Offset;
+        float _Transition;
+        float4 _BlurTex_TexelSize;
         CBUFFER_END
         
         // Object and Global properties
         SAMPLER(SamplerState_Linear_Repeat);
         TEXTURE2D(_MainTex);
         SAMPLER(sampler_MainTex);
+        TEXTURE2D(_BlurTex);
+        SAMPLER(sampler_BlurTex);
         
         // -- Property used by ScenePickingPass
         #ifdef SCENEPICKINGPASS
@@ -1701,12 +1737,16 @@ Shader "Slider"
         CBUFFER_START(UnityPerMaterial)
         float4 _MainTex_TexelSize;
         float _Offset;
+        float _Transition;
+        float4 _BlurTex_TexelSize;
         CBUFFER_END
         
         // Object and Global properties
         SAMPLER(SamplerState_Linear_Repeat);
         TEXTURE2D(_MainTex);
         SAMPLER(sampler_MainTex);
+        TEXTURE2D(_BlurTex);
+        SAMPLER(sampler_BlurTex);
         
         // -- Property used by ScenePickingPass
         #ifdef SCENEPICKINGPASS

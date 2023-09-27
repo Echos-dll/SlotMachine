@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Newtonsoft.Json;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -28,27 +29,30 @@ public class SlotMachine : MonoBehaviour
     private int m_stopCount;
     private int m_pickedCount;
     private int m_currentResult;
+    private bool m_loaded;
 
     private void Awake()
     {
-        m_remaining = new float[_results.Count];
-        m_pocket = new float[_results.Count];
-        m_pickedAmounts = new int[_results.Count];
+        Load();
 
-        Texture2D[] textures = new Texture2D[_slotItems.Count];
+        Texture2D[] slotTextures = new Texture2D[_slotItems.Count];
+        Texture2D[] blurTextures = new Texture2D[_slotItems.Count];
 
-        for (int i = 0; i < textures.Length; i++)
-            textures[i] = _slotItems[i]._texture;
+        for (int i = 0; i < slotTextures.Length; i++)
+        {
+            slotTextures[i] = _slotItems[i]._texture;
+            blurTextures[i] = _slotItems[i]._textureBlur;
+        }
         
         foreach (SpinningSlot slot in _slots)
-            slot.SetTextures(textures);
+            slot.SetTextures(slotTextures, blurTextures);
     }
 
     private void Start()
     {
         SetSlotItemValues();
         FindLeastChance();
-        FillPocket();
+        if (!m_loaded) FillPocket();
         
         // for (int i = 0; i < _amountToPick; i++)
         // {
@@ -96,7 +100,7 @@ public class SlotMachine : MonoBehaviour
             m_totalWeight += m_pocket[i];
         }
         
-        float pick = UnityEngine.Random.value * m_totalWeight;
+        float pick = Random.value * m_totalWeight;
         int chosenIndex = 0;
         float cumulativeWeight = m_pocket[0];
         
@@ -215,6 +219,39 @@ public class SlotMachine : MonoBehaviour
         }
     }
 
+    private void Save()
+    {
+        SaveData save = new SaveData
+        {
+            _pocketData = m_pocket,
+            _pickedCountData = m_pickedCount,
+            _pickedAmountsData = m_pickedAmounts
+        };
+
+        string data = JsonUtility.ToJson(save);
+        PlayerPrefs.SetString("SaveData", data);
+    }
+
+    private void Load()
+    {
+        m_pocket = new float[_results.Count];
+        m_pickedAmounts = new int[_results.Count];
+
+        if (!PlayerPrefs.HasKey("SaveData")) return;
+        
+        SaveData load = JsonUtility.FromJson<SaveData>(PlayerPrefs.GetString("SaveData"));
+        m_pocket = load._pocketData;
+        m_pickedCount = load._pickedCountData;
+        m_pickedAmounts = load._pickedAmountsData;
+        m_loaded = true;
+
+        // Debug.Log("Total picked count: " + m_pickedCount);
+        // for (int i = 0; i < m_pickedAmounts.Length; i++)
+        // {
+        //     Debug.Log("Index: " + i + " Picked " + m_pickedAmounts[i] + " times");
+        // }
+    }
+
     private void OnEnable()
     {
         _spinEvent.AddListener(StartSpinning);
@@ -223,14 +260,17 @@ public class SlotMachine : MonoBehaviour
         _resultEvent.AddListener(PlayParticle);
     }
 
-    
-
     private void OnDisable()
     {
         _spinEvent.RemoveListener(StartSpinning);
         _stopEvent.RemoveListener(StopSpinning);
         _skipEvent.RemoveListener(SkipSpinning);
         _resultEvent.RemoveListener(PlayParticle);
+    }
+
+    private void OnDestroy()
+    {
+        Save();
     }
 }
 
@@ -241,4 +281,12 @@ public struct Result
     public float _chance;
     public int _reward;
     public int _particleCount;
+}
+
+[Serializable]
+public struct SaveData
+{
+    [JsonProperty("pcd")] public int _pickedCountData;
+    [JsonProperty("pd")] public float[] _pocketData;
+    [JsonProperty("pa")] public int[] _pickedAmountsData;
 }
