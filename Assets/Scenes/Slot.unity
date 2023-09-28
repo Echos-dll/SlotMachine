@@ -617,11 +617,12 @@ MonoBehaviour:
     _chance: 5
     _reward: 600
     _particleCount: 300
+  _coinParticleSystem: {fileID: 1503386390}
   _spinSpeed: 2
   _slowStop: 0
-  _coinParticleSystem: {fileID: 1503386390}
   _stateEvent: {fileID: 11400000, guid: 06ca8f2e1ccf8b244b1121bd246c1b21, type: 2}
-  _debugMode: 1
+  _debugMode: 0
+  _debugLoad: 0
   _amountToPick: 100
 --- !u!1 &610496530
 GameObject:
