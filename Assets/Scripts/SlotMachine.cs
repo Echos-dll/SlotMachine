@@ -13,28 +13,19 @@ public class SlotMachine : MonoBehaviour
     [Header("Settings")]
     [SerializeField] private float _spinSpeed;
     [SerializeField] private bool _slowStop;
+    [SerializeField] private float _fastStopTime;
+    [SerializeField] private float _normalStopTime;
+    [SerializeField] private float _slowStopTime;
     
     [Header("Events")]
     [SerializeField] private ScriptableStateEvent _stateEvent;
     
-    [Header("DEBUG MODE")]
-    [SerializeField] private bool _debugMode;
-    [SerializeField] private bool _debugLoad;
-    [SerializeField] private int _amountToPick;
+    private RandomResultGenerator m_resultGenerator;
     
-    private float[] m_pocket;
-    private float[] m_remaining;
-    private float m_leastChance;
-    private float m_totalWeight;
-    private int[] m_pickedAmounts;
     private int m_stopCount;
     private int m_spinCount;
-    private int m_pickedCount;
     private int m_currentResult;
-    private bool m_loaded;
-
-    private RandomResultGenerator m_resultGenerator;
-
+    
     private void Awake()
     {
         Texture2D[] slotTextures = new Texture2D[_slotItems.Count];
@@ -54,13 +45,8 @@ public class SlotMachine : MonoBehaviour
 
     private void Start()
     {
+        m_resultGenerator.Load();
         SetSlotItemValues();
-
-        if (_debugLoad)
-            m_resultGenerator.DebugLoad();
-        
-        if (_debugMode)
-            m_resultGenerator.DebugRandomResult(_amountToPick);
         
     }
 
@@ -100,20 +86,25 @@ public class SlotMachine : MonoBehaviour
     private void StopSpinning()
     {
         m_currentResult = m_resultGenerator.PickRandomResult();
-        
+        m_resultGenerator.Save();
+
         for (int i = 0; i < _slots.Count; i++)
         {
             SpinningSlot slot = _slots[i];
 
             if (i == _slots.Count - 1 && SlowMoCheck(m_currentResult))
             {
-                slot.StopAtInTime(_results[m_currentResult]._combination[i].GetValue(), _slowStop ? 2.5f : 1f,
-                    OnSpinStop);
+                slot.StopAtInTime(
+                    _results[m_currentResult]._combination[i].GetValue()
+                    ,_slowStop ? _slowStopTime : _normalStopTime
+                    ,OnSpinStop);
             }
             else
             {
-                slot.StopAtInTime(_results[m_currentResult]._combination[i].GetValue(), (i + 1) * .04f,
-                    OnSpinStop);
+                slot.StopAtInTime(
+                    _results[m_currentResult]._combination[i].GetValue()
+                    ,(i + 1) * _fastStopTime
+                    ,OnSpinStop);
 
             }
         }
@@ -132,7 +123,8 @@ public class SlotMachine : MonoBehaviour
     private void SkipSpinning()
     {
         m_currentResult = m_resultGenerator.PickRandomResult();
-        
+        m_resultGenerator.Save();
+            
         for (int i = 0; i < _slots.Count; i++)
         {
             SpinningSlot slot = _slots[i];
