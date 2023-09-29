@@ -1,5 +1,4 @@
 ﻿using System;
-using Newtonsoft.Json;
 using UnityEngine;
 
 public static class SaveSystem
@@ -27,7 +26,7 @@ public static class SaveSystem
 [Serializable]
 public struct SaveData
 {
-    [JsonProperty("pcd")] public int _pickedCountData;
-    [JsonProperty("pd")] public float[] _pocketData;
-    [JsonProperty("pa")] public int[] _pickedAmountsData;
+    public int _pickedCountData;
+    public float[] _pocketData;
+    public int[] _pickedAmountsData;
 }
